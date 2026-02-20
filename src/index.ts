@@ -37,20 +37,26 @@ export default function (app: SignalKApp): Plugin {
         (s) => s.properties && Object.keys(s.properties as object).length > 0
       );
 
-      const conditionalSchemas = sourcesWithProps.map((source) => ({
-        if: {
-          properties: { source: { const: source.id } },
+      const dependenciesOneOf = sourcesWithProps.map((source) => ({
+        properties: {
+          source: { enum: [source.id] },
+          ...(source.properties as object),
         },
-        then: {
-          properties: source.properties as object,
-          required: Object.keys(source.properties as object),
-        },
+        required: Object.keys(source.properties as object),
       }));
 
-      const allSourceProperties = sources.reduce(
-        (properties, source) => Object.assign(properties, source.properties ?? {}),
-        {} as Record<string, unknown>
+      const sourcesWithoutProps = sources.filter(
+        (s) => !s.properties || Object.keys(s.properties as object).length === 0
       );
+
+      if (sourcesWithoutProps.length > 0) {
+        dependenciesOneOf.push({
+          properties: {
+            source: { enum: sourcesWithoutProps.map((s) => s.id) },
+          },
+          required: [],
+        });
+      }
 
       return {
         title: "Tides API",
@@ -59,13 +65,10 @@ export default function (app: SignalKApp): Plugin {
           source: {
             title: "Data source",
             type: "string",
-            anyOf: sources.map(({ id, title }) => ({
-              const: id,
-              title,
-            })),
+            enum: sources.map(({ id }) => id),
+            enumNames: sources.map(({ title }) => title),
             default: sources[0].id,
           },
-          ...allSourceProperties,
           period: {
             title: "Update frequency",
             type: "number",
@@ -74,7 +77,11 @@ export default function (app: SignalKApp): Plugin {
             minimum: 1,
           },
         },
-        allOf: conditionalSchemas,
+        dependencies: {
+          source: {
+            oneOf: dependenciesOneOf,
+          },
+        },
       };
     },
     start,
