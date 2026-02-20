@@ -43,4 +43,6 @@ export type Config = {
   period?: number;
   worldtidesApiKey?: string;
   stormglassApiKey?: string;
+  localTidesPath?: string;
+  shomApiKey?: string;
 };
