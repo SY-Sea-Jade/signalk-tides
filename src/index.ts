@@ -17,6 +17,7 @@
 import { Context, Delta, Path, Plugin, Position, Timestamp } from "@signalk/server-api";
 import type { SignalKApp, Config, TideForecastResult } from "./types.js";
 import { approximateTideHeightAt } from "./calculations.js";
+import { toResourceCollection, toSingleResource } from "./adapter.js";
 import FileCache from "./cache.js";
 import createSources from "./sources/index.js";
 
@@ -31,33 +32,51 @@ export default function (app: SignalKApp): Plugin {
     id: "tides",
     name: "Tides",
     description: "Tidal predictions for the vessel's position from various online sources.",
-    schema: () => ({
-      title: "Tides API",
-      type: "object",
-      properties: {
-        source: {
-          title: "Data source",
-          type: "string",
-          anyOf: sources.map(({ id, title }) => ({
-            const: id,
-            title,
-          })),
-          default: sources[0].id,
+    schema: () => {
+      const sourcesWithProps = sources.filter(
+        (s) => s.properties && Object.keys(s.properties as object).length > 0
+      );
+
+      const conditionalSchemas = sourcesWithProps.map((source) => ({
+        if: {
+          properties: { source: { const: source.id } },
         },
-        // Update plugin schema with sources
-        ...sources.reduce(
-          (properties, source) => Object.assign(properties, source.properties ?? {}),
-          {}
-        ),
-        period: {
-          title: "Update frequency",
-          type: "number",
-          description: "How often to update tide forecast (minutes)",
-          default: 60,
-          minimum: 1,
+        then: {
+          properties: source.properties as object,
+          required: Object.keys(source.properties as object),
         },
-      },
-    }),
+      }));
+
+      const allSourceProperties = sources.reduce(
+        (properties, source) => Object.assign(properties, source.properties ?? {}),
+        {} as Record<string, unknown>
+      );
+
+      return {
+        title: "Tides API",
+        type: "object",
+        properties: {
+          source: {
+            title: "Data source",
+            type: "string",
+            anyOf: sources.map(({ id, title }) => ({
+              const: id,
+              title,
+            })),
+            default: sources[0].id,
+          },
+          ...allSourceProperties,
+          period: {
+            title: "Update frequency",
+            type: "number",
+            description: "How often to update tide forecast (minutes)",
+            default: 60,
+            minimum: 1,
+          },
+        },
+        allOf: conditionalSchemas,
+      };
+    },
     start,
     stop() {
       unsubscribes.forEach((f) => f());
@@ -84,10 +103,14 @@ export default function (app: SignalKApp): Plugin {
       methods: {
         async listResources(query) {
           if (!lastPosition) throw new Error("No position available");
-          return provider({ position: lastPosition, ...query });
+          const forecast = await provider({ position: lastPosition, ...query });
+          return toResourceCollection(forecast, source.id);
         },
-        getResource(): never {
-          throw new Error("Not implemented");
+        async getResource(id: string) {
+          if (!lastForecast) throw new Error("No forecast available");
+          const feature = toSingleResource(lastForecast, id, source.id);
+          if (!feature) throw new Error(`Tide resource not found: ${id}`);
+          return feature;
         },
         setResource(): never {
           throw new Error("Not implemented");
