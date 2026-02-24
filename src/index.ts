@@ -119,7 +119,7 @@ export default function (app: SignalKApp): Plugin {
       methods: {
         async listResources(query) {
           if (!lastPosition) throw new Error("No position available");
-          return provider({ position: lastPosition, ...query });
+          return provider({ position: lastPosition, ...query }) as unknown as Record<string, unknown>;
         },
         getResource(): never {
           throw new Error("Not implemented");
@@ -153,8 +153,8 @@ export default function (app: SignalKApp): Plugin {
 
     async function updatePosition() {
       lastPosition =
-        app.getSelfPath("navigation.position.value") ||
-        (await cache.get("position")) ||
+        (app.getSelfPath("navigation.position.value") as Position | undefined) ||
+        ((await cache.get("position")) as Position | undefined) ||
         null;
 
       if (lastPosition) {
