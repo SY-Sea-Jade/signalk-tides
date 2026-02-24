@@ -11,7 +11,7 @@ export function TidesView() {
       <header className="p-6 mb-8 flex gap-8">
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight m-0 flex-1">{data?.station?.name}</h1>
-          {data?.station?.position && <Position {...data?.station?.position} />}
+          {data?.station && <Position latitude={data.station.latitude} longitude={data.station.longitude} />}
         </div>
         <div>
           <a href={SETTINGS_URL}>

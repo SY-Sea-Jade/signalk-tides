@@ -39,8 +39,8 @@ export function TideChart({
     setWidth(height / 4 * data.length)
   }, [height, data])
 
-  function displayDepth(value: number) {
-    return units === "m" ? `${value.toFixed(2)} m` : `${(value * 3.28084).toFixed(1)} ft`;
+  function displayDepth(level: number) {
+    return units === "m" ? `${level.toFixed(2)} m` : `${(level * 3.28084).toFixed(1)} ft`;
   }
 
   function displayTime(value: string) {
@@ -56,7 +56,7 @@ export function TideChart({
       .domain([min, max])
       .range([marginLeft, width - marginRight]);
 
-    const [yMin = 0, yMax = 0] = d3.extent(data, d => d.value)
+    const [yMin = 0, yMax = 0] = d3.extent(data, d => d.level)
     const yPad = (yMax - yMin) * .3;
 
     // Declare the y (vertical position) scale.
@@ -68,13 +68,13 @@ export function TideChart({
     area.current = d3.area<TideExtreme>()
       .curve(d3.curveMonotoneX)
       .x(d => x.current!(new Date(d.time)))
-      .y0(y.current!(d3.min(data, d => d.value - yPadding) ?? 0))
-      .y1(d => y.current!(d.value));
+      .y0(y.current!(d3.min(data, d => d.level - yPadding) ?? 0))
+      .y1(d => y.current!(d.level));
 
     line.current = d3.line<TideExtreme>()
       .curve(d3.curveMonotoneX)
       .x(d => x.current!(new Date(d.time)))
-      .y(d => y.current!(d.value))
+      .y(d => y.current!(d.level))
 
     if (gx.current) d3.select(gx.current).call(d3.axisBottom(x.current));
   }, [data, height, width, marginBottom, marginLeft, marginRight, marginTop])
@@ -121,19 +121,19 @@ export function TideChart({
                 <circle
                   className="TideChart__DataPoint"
                   cx={x.current?.(new Date(d.time))}
-                  cy={y.current?.(d.value)}
+                  cy={y.current?.(d.level)}
                   r={5}
                 />
                 {
                   (i !== 0 && i !== data.length - 1) &&
                   <text
-                    className={["TideChart__Text", `TideChart__Text--${d.type}`].join(" ")}
-                    y={d.type === "High" ? marginTop + textPadding : height - marginBottom - textPadding}
+                    className={["TideChart__Text", `TideChart__Text--${d.label}`].join(" ")}
+                    y={d.label === "High" ? marginTop + textPadding : height - marginBottom - textPadding}
                   >
-                    <tspan className="TideChart__Depth" x={x.current?.(new Date(d.time))} dy={d.type === "High" ? "1.5em" : "-1.5em"}>
-                      {displayDepth(d.value)}
+                    <tspan className="TideChart__Depth" x={x.current?.(new Date(d.time))} dy={d.label === "High" ? "1.5em" : "-1.5em"}>
+                      {displayDepth(d.level)}
                     </tspan>
-                    <tspan className="TideChart__Time" x={x.current?.(new Date(d.time))} dy={d.type === "High" ? "-1.5em" : "1.5em"}>
+                    <tspan className="TideChart__Time" x={x.current?.(new Date(d.time))} dy={d.label === "High" ? "-1.5em" : "1.5em"}>
                       {displayTime(d.time)}
                     </tspan>
                   </text>
