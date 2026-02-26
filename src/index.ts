@@ -15,17 +15,33 @@
  */
 
 import { Context, Delta, Path, Plugin, Position, Timestamp } from "@signalk/server-api";
+import { RequestHandler } from "express";
+import { createRoutes } from "@neaps/api";
 import type { SignalKApp, Config, TideForecastResult } from "./types.js";
 import { approximateTideHeightAt } from "./calculations.js";
 import FileCache from "./cache.js";
 import createSources from "./sources/index.js";
+import { createAdapterRoutes } from "./routes.js";
 
 export default function (app: SignalKApp): Plugin {
   // Interval to update tide data
   const defaultPeriod = 60; // 1 hour
   let unsubscribes: (() => void)[] = [];
+  let activeRouter: RequestHandler | null = null;
 
   const sources = createSources(app);
+
+  const MOUNT_PATH = "/signalk/v2/api/tides";
+
+  // Mount forwarding middleware once (Express doesn't support unmounting)
+  // @ts-expect-error: app is an Express app at runtime
+  app.use(MOUNT_PATH, (req, res, next) => {
+    if (activeRouter) {
+      activeRouter(req, res, next);
+    } else {
+      next();
+    }
+  });
 
   const plugin: Plugin = {
     id: "tides",
@@ -62,6 +78,7 @@ export default function (app: SignalKApp): Plugin {
     stop() {
       unsubscribes.forEach((f) => f());
       unsubscribes = [];
+      activeRouter = null;
     },
   };
 
@@ -73,10 +90,28 @@ export default function (app: SignalKApp): Plugin {
     const cache = new FileCache(app.getDataDirPath());
 
     // Use the selected source, or the first one if not specified
-    const source = sources.find((source) => source.id === props.source) || sources[0];
+    const source =
+      sources.find((source) => source.id === props.source) || sources[0];
 
     // Load the selected source
     const provider = await source.start(props);
+
+    const getDefaultPosition = () => lastPosition;
+
+    // Set active router based on source
+    if (source.id === "neaps") {
+      const neapsRoutes = createRoutes({ prefix: MOUNT_PATH });
+      // Cast needed: @neaps/api bundles its own Express types that conflict with local ones
+      activeRouter = withDefaultPosition(
+        neapsRoutes as unknown as RequestHandler,
+        getDefaultPosition,
+      );
+    } else {
+      activeRouter = withDefaultPosition(
+        createAdapterRoutes(provider),
+        getDefaultPosition,
+      );
+    }
 
     // Register the source as a resource provider
     app.registerResourceProvider({
@@ -84,7 +119,7 @@ export default function (app: SignalKApp): Plugin {
       methods: {
         async listResources(query) {
           if (!lastPosition) throw new Error("No position available");
-          return provider({ position: lastPosition, ...query });
+          return provider({ position: lastPosition, ...query }) as unknown as Record<string, unknown>;
         },
         getResource(): never {
           throw new Error("Not implemented");
@@ -113,12 +148,14 @@ export default function (app: SignalKApp): Plugin {
       (subscriptionError) => {
         app.error("Error:" + subscriptionError);
       },
-      updatePosition
+      updatePosition,
     );
 
     async function updatePosition() {
       lastPosition =
-        app.getSelfPath("navigation.position.value") || (await cache.get("position")) || null;
+        (app.getSelfPath("navigation.position.value") as Position | undefined) ||
+        ((await cache.get("position")) as Position | undefined) ||
+        null;
 
       if (lastPosition) {
         await cache.set("position", lastPosition);
@@ -185,6 +222,24 @@ export default function (app: SignalKApp): Plugin {
     // Update every minute
     setInterval(updateTides, 60 * 1000);
   }
+
+  /** Middleware that injects default position into query when not provided */
+  function withDefaultPosition(
+    router: RequestHandler,
+    getPosition: () => Position | null,
+  ): RequestHandler {
+    return (req, res, next) => {
+      if (!req.query.latitude && !req.query.longitude) {
+        const pos = getPosition();
+        if (pos) {
+          req.query.latitude = String(pos.latitude);
+          req.query.longitude = String(pos.longitude);
+        }
+      }
+      router(req, res, next);
+    };
+  }
+
   function delay(time: number) {
     return new Promise((resolve) => setTimeout(resolve, time));
   }

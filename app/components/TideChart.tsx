@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { TideExtreme } from "../hooks/useTideData";
 import { useContainerDimensions } from "../hooks/useContainerDimensions";
@@ -23,14 +23,10 @@ export function TideChart({
   units = "m",
 }: TideChartProps) {
   const container = useRef<HTMLDivElement>(null);
-  const now = useRef<SVGLineElement>(null);
+  const nowLine = useRef<SVGLineElement>(null);
   const { height = 0 } = useContainerDimensions(container) || {};
   const [width, setWidth] = useState(0)
   const gx = useRef<SVGGElement>(null);
-  const x = useRef<d3.ScaleTime<number, number, never>>(null);
-  const y = useRef<d3.ScaleLinear<number, number, never>>(null);
-  const area = useRef<d3.Area<TideExtreme>>(null);
-  const line = useRef<d3.Line<TideExtreme>>(null);
   const textPadding = 25;
   const yPadding = 0.3; // meters
 
@@ -39,8 +35,8 @@ export function TideChart({
     setWidth(height / 4 * data.length)
   }, [height, data])
 
-  function displayDepth(value: number) {
-    return units === "m" ? `${value.toFixed(2)} m` : `${(value * 3.28084).toFixed(1)} ft`;
+  function displayDepth(level: number) {
+    return units === "m" ? `${level.toFixed(2)} m` : `${(level * 3.28084).toFixed(1)} ft`;
   }
 
   function displayTime(value: string) {
@@ -49,39 +45,46 @@ export function TideChart({
     }).format(new Date(value));
   }
 
-  useEffect(() => {
+  const scales = useMemo(() => {
+    if (!data.length || !width || !height) return null;
+
     const [min = 0, max = 0] = d3.extent(data, d => new Date(d.time));
 
-    x.current = d3.scaleTime()
+    const xScale = d3.scaleTime()
       .domain([min, max])
       .range([marginLeft, width - marginRight]);
 
-    const [yMin = 0, yMax = 0] = d3.extent(data, d => d.value)
+    const [yMin = 0, yMax = 0] = d3.extent(data, d => d.level)
     const yPad = (yMax - yMin) * .3;
 
-    // Declare the y (vertical position) scale.
-    y.current = d3.scaleLinear()
+    const yScale = d3.scaleLinear()
       .domain([yMin - yPad, yMax + yPad])
       .range([height - marginBottom, marginTop]);
 
-    // Declare the area generator.
-    area.current = d3.area<TideExtreme>()
+    const areaGen = d3.area<TideExtreme>()
       .curve(d3.curveMonotoneX)
-      .x(d => x.current!(new Date(d.time)))
-      .y0(y.current!(d3.min(data, d => d.value - yPadding) ?? 0))
-      .y1(d => y.current!(d.value));
+      .x(d => xScale(new Date(d.time)))
+      .y0(yScale(d3.min(data, d => d.level - yPadding) ?? 0))
+      .y1(d => yScale(d.level));
 
-    line.current = d3.line<TideExtreme>()
+    const lineGen = d3.line<TideExtreme>()
       .curve(d3.curveMonotoneX)
-      .x(d => x.current!(new Date(d.time)))
-      .y(d => y.current!(d.value))
+      .x(d => xScale(new Date(d.time)))
+      .y(d => yScale(d.level))
 
-    if (gx.current) d3.select(gx.current).call(d3.axisBottom(x.current));
+    return { x: xScale, y: yScale, area: areaGen, line: lineGen };
   }, [data, height, width, marginBottom, marginLeft, marginRight, marginTop])
 
+  // Imperatively render the x-axis via d3
   useEffect(() => {
-    now.current?.scrollIntoView({ block: 'center', inline: 'center' })
-  }, [data, now, width])
+    if (scales && gx.current) {
+      d3.select(gx.current).call(d3.axisBottom(scales.x));
+    }
+  }, [scales])
+
+  useEffect(() => {
+    nowLine.current?.scrollIntoView({ block: 'center', inline: 'center' })
+  }, [data, width])
 
   return (
     <div className="TideChart" ref={container}>
@@ -98,18 +101,18 @@ export function TideChart({
           className="TideChart__LowWater"
           x1={marginLeft}
           x2={width - marginRight}
-          y1={y.current?.(0)}
-          y2={y.current?.(0)}
+          y1={scales?.y(0)}
+          y2={scales?.y(0)}
         />
 
-        <path fill="url(#gradient)" d={area.current?.(data) || ''} />
-        <path className="TideChart__Line" d={line.current?.(data) || ''} />
+        <path fill="url(#gradient)" d={scales?.area(data) || ''} />
+        <path className="TideChart__Line" d={scales?.line(data) || ''} />
 
         <line
-          ref={now}
+          ref={nowLine}
           className="TideChart__Now"
-          x1={x.current?.(new Date())}
-          x2={x.current?.(new Date())}
+          x1={scales?.x(new Date())}
+          x2={scales?.x(new Date())}
           y1={marginTop}
           y2={height - marginTop}
         />
@@ -120,20 +123,20 @@ export function TideChart({
               <g key={i}>
                 <circle
                   className="TideChart__DataPoint"
-                  cx={x.current?.(new Date(d.time))}
-                  cy={y.current?.(d.value)}
+                  cx={scales?.x(new Date(d.time))}
+                  cy={scales?.y(d.level)}
                   r={5}
                 />
                 {
                   (i !== 0 && i !== data.length - 1) &&
                   <text
-                    className={["TideChart__Text", `TideChart__Text--${d.type}`].join(" ")}
-                    y={d.type === "High" ? marginTop + textPadding : height - marginBottom - textPadding}
+                    className={["TideChart__Text", `TideChart__Text--${d.label}`].join(" ")}
+                    y={d.label === "High" ? marginTop + textPadding : height - marginBottom - textPadding}
                   >
-                    <tspan className="TideChart__Depth" x={x.current?.(new Date(d.time))} dy={d.type === "High" ? "1.5em" : "-1.5em"}>
-                      {displayDepth(d.value)}
+                    <tspan className="TideChart__Depth" x={scales?.x(new Date(d.time))} dy={d.label === "High" ? "1.5em" : "-1.5em"}>
+                      {displayDepth(d.level)}
                     </tspan>
-                    <tspan className="TideChart__Time" x={x.current?.(new Date(d.time))} dy={d.type === "High" ? "-1.5em" : "1.5em"}>
+                    <tspan className="TideChart__Time" x={scales?.x(new Date(d.time))} dy={d.label === "High" ? "-1.5em" : "1.5em"}>
                       {displayTime(d.time)}
                     </tspan>
                   </text>
