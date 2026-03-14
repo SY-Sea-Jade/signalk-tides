@@ -23,6 +23,11 @@ import FileCache from "./cache.js";
 import createSources from "./sources/index.js";
 import { createAdapterRoutes } from "./routes.js";
 
+interface CachedForecast {
+  timestamp: number;
+  data: TideForecastResult;
+}
+
 export default function (app: SignalKApp): Plugin {
   // Interval to update tide data
   const defaultPeriod = 60; // 1 hour
@@ -88,6 +93,7 @@ export default function (app: SignalKApp): Plugin {
     let lastForecast: TideForecastResult | null = null;
     let lastPosition: Position | null = null;
     const cache = new FileCache(app.getDataDirPath());
+    const periodMs = (props.period ?? defaultPeriod) * 60 * 1000;
 
     // Use the selected source, or the first one if not specified
     const source =
@@ -119,6 +125,10 @@ export default function (app: SignalKApp): Plugin {
       methods: {
         async listResources(query) {
           if (!lastPosition) throw new Error("No position available");
+          // Serve cached forecast for default requests (no custom date)
+          if (lastForecast && (!query || !query.date)) {
+            return lastForecast as unknown as Record<string, unknown>;
+          }
           return provider({ position: lastPosition, ...query }) as unknown as Record<string, unknown>;
         },
         getResource(): never {
@@ -139,7 +149,7 @@ export default function (app: SignalKApp): Plugin {
         subscribe: [
           {
             path: "navigation.position" as Path,
-            period: (props.period ?? defaultPeriod) * 60 * 1000,
+            period: periodMs,
             policy: "fixed",
           },
         ],
@@ -169,11 +179,49 @@ export default function (app: SignalKApp): Plugin {
         return;
       }
 
+      // Check if cached forecast is still fresh
+      const cached = (await cache.get("forecast")) as CachedForecast | undefined;
+      if (cached && cached.timestamp && (Date.now() - cached.timestamp) < periodMs) {
+        if (!lastForecast) {
+          // Restore from disk cache (e.g. after restart)
+          lastForecast = cached.data;
+          app.debug(
+            "Restored tide forecast from cache (age: " +
+              Math.round((Date.now() - cached.timestamp) / 60000) +
+              " min)"
+          );
+          app.setPluginStatus("Restored tide forecast from cache");
+          updateTides();
+        } else {
+          app.debug("Tide forecast cache is fresh, skipping fetch");
+        }
+        return;
+      }
+
       try {
         lastForecast = await provider({ position: lastPosition });
+
+        // Write forecast + timestamp to disk cache
+        await cache.set("forecast", {
+          timestamp: Date.now(),
+          data: lastForecast,
+        });
+
         app.setPluginStatus("Updated tide forecast from " + source.title);
         updateTides();
       } catch (e: unknown) {
+        // If fetch fails but we have a stale cache, use it rather than showing nothing
+        if (!lastForecast && cached && cached.data) {
+          lastForecast = cached.data;
+          app.debug(
+            "Fetch failed, falling back to stale cache (age: " +
+              Math.round((Date.now() - cached.timestamp) / 60000) +
+              " min)"
+          );
+          app.setPluginStatus("Using stale cached forecast (fetch failed)");
+          updateTides();
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         app.setPluginError((e as any).message);
         // @ts-expect-error: TODO[TS] this accepts more than just a string: https://github.com/bkeepers/signalk-server/blob/d6845ee1f915e6b729d66d2b08b15dc2e0da8e51/src/interfaces/plugins.ts#L517-L519
