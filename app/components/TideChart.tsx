@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { TideExtreme } from "../hooks/useTideData";
 import { useContainerDimensions } from "../hooks/useContainerDimensions";
+import type { DisplayUnit } from "../units";
 
 type TideChartProps = {
   width?: number;
@@ -10,7 +11,7 @@ type TideChartProps = {
   marginRight?: number;
   marginBottom?: number;
   marginLeft?: number;
-  units?: "m" | "ft";
+  heightUnit: DisplayUnit;
   data: TideExtreme[];
 };
 
@@ -20,7 +21,7 @@ export function TideChart({
   marginRight = 6,
   marginBottom = 30,
   marginLeft = 6,
-  units = "m",
+  heightUnit,
 }: TideChartProps) {
   const container = useRef<HTMLDivElement>(null);
   const nowLine = useRef<SVGLineElement>(null);
@@ -36,7 +37,7 @@ export function TideChart({
   }, [height, data])
 
   function displayDepth(level: number) {
-    return units === "m" ? `${level.toFixed(2)} m` : `${(level * 3.28084).toFixed(1)} ft`;
+    return `${heightUnit.toDisplay(level).toFixed(heightUnit.decimals)} ${heightUnit.symbol}`;
   }
 
   function displayTime(value: string) {
