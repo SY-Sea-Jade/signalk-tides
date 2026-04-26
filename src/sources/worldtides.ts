@@ -36,7 +36,9 @@ export default function (app: SignalKApp): TideSource {
         if (!res.ok) throw new Error('Failed to fetch worldtides: ' + res.statusText);
 
         const data = await res.json() as WorldTidesPredictionApiResponse;
-        app.debug(JSON.stringify(data, null, 2));
+        if (app.debug.enabled) {
+          app.debug(JSON.stringify(data, null, 2));
+        }
 
         if (data.status != 200) throw new Error("worldtides data: " + data.error ? data.error : "none");
 
