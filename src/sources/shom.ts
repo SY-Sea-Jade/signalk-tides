@@ -102,10 +102,10 @@ export default function (app: SignalKApp): TideSource {
             throw new Error(`SHOM API request failed: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json() as any;
+        const data = await response.json() as ShomApiResponse;
         app.debug('SHOM response: ' + JSON.stringify(data, null, 2));
 
-        const rawEntries: ShomHltEntry[] = data.hlt || data.data || data || [];
+        const rawEntries: ShomHltEntry[] = (!Array.isArray(data) && (data.hlt || data.data)) || (Array.isArray(data) ? data : []);
 
         const extremes = [];
         for (const item of rawEntries) {
