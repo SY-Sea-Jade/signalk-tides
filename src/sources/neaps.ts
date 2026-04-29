@@ -30,7 +30,7 @@ export default function (app: SignalKApp): TideSource {
               longitude: station.longitude,
             },
           },
-          extremes: extremes.map(({ time, level, label }) => {
+          extremes: extremes.map(({ time, level, label }: { time: Date; level: number; label: string }) => {
             return {
               type: label as "High" | "Low",
               value: level,
