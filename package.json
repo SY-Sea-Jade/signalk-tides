@@ -66,6 +66,9 @@
     "type": "git",
     "url": "git+https://github.com/bkeepers/signalk-tides.git"
   },
+  "overrides": {
+    "caniuse-lite": "*"
+  },
   "signalk-plugin-enabled-by-default": true,
   "signalk": {
     "appIcon": "icon.svg",
