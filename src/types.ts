@@ -1,7 +1,10 @@
 import { Position, ServerAPI } from "@signalk/server-api";
 
-// TODO[TS]: Fix this in the upstream types
-export type SignalKApp = ServerAPI;
+// ServerAPI types debug as a plain function but the underlying debug package
+// exposes .enabled, which we use to guard expensive JSON.stringify calls.
+export type SignalKApp = Omit<ServerAPI, 'debug'> & {
+  debug: ServerAPI['debug'] & { enabled: boolean };
+};
 
 export type OptionalPromise<T> = T | Promise<T>;
 

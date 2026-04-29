@@ -133,7 +133,7 @@ export default function (app: SignalKApp): Plugin {
           if (lastForecast && (!query || !query.date)) {
             return lastForecast as unknown as Record<string, unknown>;
           }
-          const forecast = await provider({ position: lastPosition, ...query }) as unknown as Record<string, unknown>;
+          const forecast = await provider({ position: lastPosition, ...query });
           return toResourceCollection(forecast, source.id);
         },
         async getResource(id: string) {
