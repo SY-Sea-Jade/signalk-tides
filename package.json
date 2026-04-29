@@ -31,7 +31,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@neaps/api": "^0.5.0",
+    "@neaps/api": "^0.4.0",
     "@signalk/server-api": ">=2.0",
     "express": "^5.2",
     "geolib": "^3.3.4",
