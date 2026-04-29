@@ -218,6 +218,69 @@ $ curl http://localhost:3000/signalk/v2/api/resources/tides
 - [StormGlass.io](https://stormglass.io/)
   - Online (requires API key)
   - Coverage: Global - aggregated marine data; tide availability varies
+- **Local Files**
+  - Offline, uses JSON files stored locally
+  - Requires manual data setup (see below)
+- [SHOM](https://services.data.shom.fr/support/en/services/spm)
+  - Online (requires API key)
+  - French Hydrographic Office (Service hydrographique et océanographique de la Marine)
+  - Coverage: French coastal waters
+
+### Setup Tides Data (Local Provider)
+
+Create JSON files and store tide data under a path accessible to the server (e.g. `/home/node/.signalk/tides`).
+
+#### Directory Structure
+
+Organize files by month under a named directory:
+
+```bash
+ls /home/node/.signalk/tides/myport/
+01_2025.json  04_2025.json  07_2025.json  10_2025.json
+02_2025.json  05_2025.json  08_2025.json  11_2025.json
+03_2025.json  06_2025.json  09_2025.json  12_2025.json
+```
+
+#### JSON Format
+
+Each JSON file contains tide data for a specific month. The structure follows this format:
+
+```json
+{
+    "2025-01-01": [
+        [
+            "tide.low",
+            "11:38",
+            "1.45m",
+            "---"
+        ],
+        [
+            "tide.high",
+            "05:21",
+            "5.95m",
+            "80"
+        ],
+        [
+            "tide.low",
+            "23:56",
+            "1.56m",
+            "---"
+        ],
+        [
+            "tide.high",
+            "17:44",
+            "5.7m",
+            "81"
+        ]
+    ]
+}
+```
+
+Each tide entry consists of:
+- **Type**: "tide.low" or "tide.high"
+- **Time**: The time of the tide event (HH:MM)
+- **Height**: Tide height in meters
+- **Coefficient**: If applicable, the coefficient value (otherwise "---")
 
 ## License
 
