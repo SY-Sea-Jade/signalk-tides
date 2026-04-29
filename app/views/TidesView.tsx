@@ -1,10 +1,13 @@
 import { SETTINGS_URL, useTideData } from "../hooks/useTideData";
+import { useUnitPreferences } from "../hooks/useUnitPreferences";
+import { heightUnitFromPreset } from "../units";
 import { Position } from '../components/Position';
 import { TideChart } from '../components/TideChart'
 
 export function TidesView() {
   const data = useTideData();
-  const units = navigator.language === 'en-US' ? 'ft' : 'm';
+  const { depth, status: unitStatus } = useUnitPreferences();
+  const heightUnit = heightUnitFromPreset(depth, navigator.language);
 
   return (
     <>
@@ -23,8 +26,8 @@ export function TidesView() {
         </div>
       </header >
       {
-        data?.extremes ?
-          <TideChart data={data.extremes} units={units} /> :
+        data?.extremes && unitStatus !== "loading" ?
+          <TideChart data={data.extremes} heightUnit={heightUnit} /> :
           <LoadingTidesView />
       }
     </>
