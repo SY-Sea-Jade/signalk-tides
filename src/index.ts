@@ -83,7 +83,9 @@ export default function (app: SignalKApp): Plugin {
   };
 
   async function start(props: Config) {
-    app.debug("Starting tides-api: " + JSON.stringify(props));
+    if (app.debug.enabled) {
+      app.debug("Starting tides-api: " + JSON.stringify(props));
+    }
 
     let lastForecast: TideForecastResult | null = null;
     let lastPosition: Position | null = null;
@@ -213,7 +215,9 @@ export default function (app: SignalKApp): Plugin {
         ],
       };
 
-      app.debug("Sending delta: " + JSON.stringify(delta));
+      if (app.debug.enabled) {
+        app.debug("Sending delta: " + JSON.stringify(delta));
+      }
       app.handleMessage(plugin.id, delta);
     }
 

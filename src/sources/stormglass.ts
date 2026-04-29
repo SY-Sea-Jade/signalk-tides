@@ -36,7 +36,9 @@ export default function (app: SignalKApp): TideSource {
         if (!res.ok) throw new Error('Failed to fetch StormGlass.io: ' + res.statusText);
 
         const data = await res.json() as StormGlassApiResponse;
-        app.debug(JSON.stringify(data, null, 2));
+        if (app.debug.enabled) {
+          app.debug(JSON.stringify(data, null, 2));
+        }
 
         return {
           station: {

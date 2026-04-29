@@ -65,7 +65,9 @@ export default function (app: SignalKApp): TideSource {
           if (!res.ok)
             throw new Error("Failed to fetch NOAA tides: " + res.statusText);
           const body = (await res.json()) as NoaaPredictionApiResponse;
-          app.debug("NOAA response: \n" + JSON.stringify(body, null, 2));
+          if (app.debug.enabled) {
+            app.debug("NOAA response: \n" + JSON.stringify(body, null, 2));
+          }
 
           if (body.error) throw new Error(body.error.message);
 
