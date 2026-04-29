@@ -25,7 +25,7 @@ export default function (app: SignalKApp): TideSource {
 
         const startDate = moment(date);
         const endDate = moment(date).add(7, 'days'); // Standard range seems to be a week
-        const extremes: any[] = [];
+        const extremes: { type: "High" | "Low"; value: number; time: string }[] = [];
 
         // We might need data from multiple months
         let currentMonth = moment(startDate);
@@ -66,10 +66,8 @@ export default function (app: SignalKApp): TideSource {
                     }
                 }
 
-            } catch (err: any) {
-                // Ignore missing files, just log debug
-                 // If the start date file is missing, it might be an issue, but let's just debug log
-                app.debug(`Could not read or parse local tide file ${filePath}: ${err.message}`);
+            } catch (err: unknown) {
+                app.debug(`Could not read or parse local tide file ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
             }
 
             // Move to next month

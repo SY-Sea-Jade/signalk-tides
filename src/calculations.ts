@@ -96,7 +96,7 @@ function calculateTideHeightUsingTwelfths(
 
   // Calculate one twelfth of the total tide change
   const twelfth = tideChange / 12;
-  let heightChange = 0;
+  let heightChange: number;
 
   // Apply the Rule of Twelfths based on elapsed time
   if (tideCycleDuration === 0) {

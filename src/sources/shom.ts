@@ -15,6 +15,16 @@ interface ShomHltEntry {
     type: string;
 }
 
+interface ShomHarborRaw {
+    cst: string;
+    name?: string;
+    libelle?: string;
+    latitude: string;
+    longitude: string;
+}
+
+type ShomApiResponse = { hlt?: ShomHltEntry[]; data?: ShomHltEntry[] } | ShomHltEntry[];
+
 const HARBORS_URL = 'https://services.data.shom.fr/spm/harbors';
 
 async function fetchHarbors(apiKey: string): Promise<ShomHarbor[]> {
@@ -22,8 +32,8 @@ async function fetchHarbors(apiKey: string): Promise<ShomHarbor[]> {
     url.searchParams.set('apikey', apiKey);
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`SHOM harbor list failed: ${res.status} ${res.statusText}`);
-    const data = await res.json() as any[];
-    return data.map((h: any) => ({
+    const data = await res.json() as ShomHarborRaw[];
+    return data.map((h) => ({
         cst: h.cst,
         name: h.name || h.libelle || h.cst,
         latitude: parseFloat(h.latitude),
