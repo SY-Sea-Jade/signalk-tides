@@ -41,6 +41,8 @@ export interface TideSource {
   properties?: unknown; // TODO: use schema?
 }
 
+export type StormGlassDatum = 'MLLW' | 'MSL';
+
 export type Config = {
   source?: string;
   period?: number;
@@ -48,4 +50,5 @@ export type Config = {
   stormglassApiKey?: string;
   localTidesPath?: string;
   shomApiKey?: string;
+  stormglassDatum?: StormGlassDatum;
 };

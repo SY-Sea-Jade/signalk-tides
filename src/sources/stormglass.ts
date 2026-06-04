@@ -1,4 +1,4 @@
-import type { SignalKApp, TideForecastParams, TideForecastResult, TideSource } from "../types.js";
+import type { SignalKApp, TideForecastParams, TideForecastResult, TideSource, StormGlassDatum } from "../types.js";
 import type { StormGlassApiResponse } from "../types/stormglass.js";
 import moment from 'moment';
 
@@ -10,10 +10,17 @@ export default function (app: SignalKApp): TideSource {
       stormglassApiKey: {
         type: 'string',
         title: 'StormGlass.io API key'
+      },
+      stormglassDatum: {
+        type: 'string',
+        title: 'StormGlass.io datum',
+        enum: ['MLLW', 'MSL'] satisfies StormGlassDatum[],
+        enumNames: ['MLLW (Mean Lower Low Water)', 'MSL (Mean Sea Level)'],
+        default: 'MSL'
       }
     },
 
-    start({ stormglassApiKey } = {}) {
+    start({ stormglassApiKey, stormglassDatum = 'MSL' } = {}) {
       app.debug("Using StormGlass.io API");
 
       return async ({ position, date = moment().subtract(1, "days").toISOString() }: TideForecastParams): Promise<TideForecastResult> => {
@@ -22,7 +29,7 @@ export default function (app: SignalKApp): TideSource {
         endPoint.search = new URLSearchParams({
           start: moment(date).format("YYYY-MM-DD"),
           end: moment(date).add(7, "days").format("YYYY-MM-DD"),
-          // datum: "CD",
+          datum: stormglassDatum,
           lat: position.latitude.toString(),
           lng: position.longitude.toString()
         }).toString();
