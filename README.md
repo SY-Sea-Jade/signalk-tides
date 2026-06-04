@@ -1,4 +1,8 @@
-# signalk-tides
+# signalk-tides (Forked)
+
+An ephemeral fork of https://github.com/openwatersio/signalk-tides with updated dependencies (motivated by the `neaps` library version used missing European ports) and some recent PRs merged.
+
+---
 
 A SignalK plugin that provides tidal predictions for the vessel's position from various [sources](#sources).
 
