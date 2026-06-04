@@ -1,6 +1,6 @@
 {
   "name": "@syseajade/signalk-tides-forked",
-  "version": "1.5.0-syseajade",
+  "version": "1.5.0-syseajade-0.1",
   "description": "Tidal predictions for the vessel's position from various online sources.",
   "type": "module",
   "main": "./dist/index.js",
