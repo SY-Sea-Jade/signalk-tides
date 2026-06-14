@@ -1,6 +1,6 @@
 # signalk-tides (Forked)
 
-An ephemeral fork of https://github.com/openwatersio/signalk-tides with updated dependencies (motivated by the `neaps` library version used missing European ports) and some recent PRs merged.
+Now deprecated ephemeral fork of https://github.com/openwatersio/signalk-tides with updated dependencies (motivated by the `neaps` library version used missing European ports) and some recent PRs merged.
 
 ---
 
