@@ -1,7 +1,7 @@
 {
   "name": "@syseajade/signalk-tides-forked",
   "version": "1.5.0-deprecated",
-  "description": "Tidal predictions for the vessel's position from various online sources. Forked with latest neaps tidal library to add non-US ports and stormglass datum choice.",
+  "description": "Tidal predictions for the vessel's position from various online sources. Forked with latest neaps tidal library to add non-US ports and stormglass datum choice, now recommend 2.0.0+ of the original plugin.",
   "type": "module",
   "main": "./dist/index.js",
   "exports": "./dist/index.js",
